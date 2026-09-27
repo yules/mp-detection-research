@@ -7,12 +7,6 @@ from datasets import load_from_disk
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-ADVBENCH_URL = (
-    "https://raw.githubusercontent.com/llm-attacks/llm-attacks/main/"
-    "data/advbench/harmful_behaviors.csv"
-)
-
-
 def load_model_config(config_path):
     """Load the selected model and its latent-vector layer index."""
     with Path(config_path).open() as config_file:
@@ -76,9 +70,9 @@ def load_prompt_sets(
         print(f"Failed to load HarmBench: {error}")
         harmbench_prompts = []
 
-    print("Downloading AdvBench to supplement malicious baseline...")
+    print("Loading AdvBench from local disk...")
     try:
-        advbench = pd.read_csv(ADVBENCH_URL)
+        advbench = pd.read_csv("./data/advbench.csv")
         advbench_prompts = advbench["goal"].tolist()
     except Exception as error:
         print(f"Failed to load AdvBench: {error}")

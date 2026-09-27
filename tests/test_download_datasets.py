@@ -1,38 +1,62 @@
+import os
 import unittest
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import download_datasets
 
 
 class DownloadDatasetsTests(unittest.TestCase):
     @patch("download_datasets.os.makedirs")
+    @patch("download_datasets.pd.read_csv")
     @patch("download_datasets.load_dataset")
-    def test_download_and_save_datasets_saves_harmbench(
-        self, load_dataset, makedirs
+    def test_download_and_save_datasets_saves_all_datasets(
+        self, load_dataset, read_csv, makedirs
     ):
-        dataset = Mock()
-        load_dataset.return_value = dataset
+        datasets = [Mock(), Mock(), Mock()]
+        load_dataset.side_effect = datasets
+        advbench = Mock()
+        read_csv.return_value = advbench
         base_dir = "./test-data"
 
-        download_datasets.download_and_save_datasets(base_dir)
+        with patch("builtins.print"):
+            download_datasets.download_and_save_datasets(base_dir)
 
-        load_dataset.assert_called_once_with(
-            "walledai/HarmBench", "standard", trust_remote_code=True
+        self.assertEqual(
+            load_dataset.call_args_list,
+            [
+                call("walledai/HarmBench", "standard", trust_remote_code=True),
+                call("FloofCat/AdvSuffixes"),
+                call("rubend18/ChatGPT-Jailbreak-Prompts"),
+            ],
         )
-        dataset.save_to_disk.assert_called_once_with(
-            str(Path(base_dir) / "harmbench")
+        read_csv.assert_called_once_with(download_datasets.ADVBENCH_URL)
+        advbench.to_csv.assert_called_once_with(
+            os.path.join(base_dir, "advbench.csv"), index=False
         )
+        for dataset, local_name in zip(
+            datasets, ["harmbench", "adv_suffixes", "jailbreak_prompts"]
+        ):
+            dataset.save_to_disk.assert_called_once_with(
+                os.path.join(base_dir, local_name)
+            )
         makedirs.assert_called_once_with(base_dir, exist_ok=True)
 
     @patch("download_datasets.os.makedirs")
-    @patch("download_datasets.load_dataset", side_effect=RuntimeError("network error"))
-    def test_download_and_save_datasets_handles_download_failure(
-        self, load_dataset, makedirs
+    @patch("download_datasets.pd.read_csv", side_effect=RuntimeError("network error"))
+    @patch("download_datasets.load_dataset")
+    def test_download_and_save_datasets_continues_after_failure(
+        self, load_dataset, read_csv, makedirs
     ):
-        download_datasets.download_and_save_datasets("./test-data")
+        saved_datasets = [Mock(), Mock()]
+        load_dataset.side_effect = [RuntimeError("network error"), *saved_datasets]
 
-        load_dataset.assert_called_once()
+        with patch("builtins.print"):
+            download_datasets.download_and_save_datasets("./test-data")
+
+        self.assertEqual(load_dataset.call_count, 3)
+        read_csv.assert_called_once_with(download_datasets.ADVBENCH_URL)
+        for dataset in saved_datasets:
+            dataset.save_to_disk.assert_called_once()
         makedirs.assert_called_once_with("./test-data", exist_ok=True)
 
 

@@ -109,7 +109,7 @@ class ModelUtilsTests(unittest.TestCase):
         self.assertEqual(malicious_prompts, ["hb-1", "hb-2", "adv-1"])
         load_from_disk.assert_any_call("./data/harmbench")
         load_from_disk.assert_any_call("./data/ultrachat")
-        read_csv.assert_called_once_with(model_utils.ADVBENCH_URL)
+        read_csv.assert_called_once_with("./data/advbench.csv")
 
     @patch("lib.model_utils.load_from_disk", side_effect=RuntimeError("missing"))
     @patch("lib.model_utils.pd.read_csv")

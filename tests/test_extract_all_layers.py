@@ -35,7 +35,10 @@ class ExtractAllLayersTests(unittest.TestCase):
         tokenize_prompt.assert_called_once_with("hello", tokenizer, device)
         model.assert_called_once_with(**inputs)
 
-    @patch("extract_all_layers.Path.resolve", return_value=Path("/virtual/project"))
+    @patch(
+        "extract_all_layers.Path.resolve",
+        return_value=Path("/virtual/project/extract_all_layers.py"),
+    )
     @patch("extract_all_layers.np.savez")
     @patch("extract_all_layers.os.makedirs")
     @patch("extract_all_layers.get_all_layer_vectors")
