@@ -7,10 +7,6 @@ import torch
 import extract_all_layers
 
 
-class HarmBenchTrain(dict):
-    column_names = ["Behavior"]
-
-
 class ExtractAllLayersTests(unittest.TestCase):
     @patch("extract_all_layers.tokenize_prompt")
     def test_get_all_layer_vectors_normalizes_final_token_of_each_layer(
@@ -41,14 +37,14 @@ class ExtractAllLayersTests(unittest.TestCase):
     @patch("extract_all_layers.np.savez")
     @patch("extract_all_layers.os.makedirs")
     @patch("extract_all_layers.get_all_layer_vectors")
-    @patch("extract_all_layers.load_from_disk")
+    @patch("extract_all_layers.load_prompt_sets")
     @patch("extract_all_layers.load_model_and_tokenizer")
     @patch("extract_all_layers.load_model_config")
     def test_main_loads_configured_model_and_saves_layer_vectors(
         self,
         load_model_config,
         load_model_and_tokenizer,
-        load_from_disk,
+        load_prompt_sets,
         get_all_layer_vectors,
         makedirs,
         savez,
@@ -56,10 +52,7 @@ class ExtractAllLayersTests(unittest.TestCase):
         load_model_config.return_value = ("configured-model", 5)
         tokenizer, model = Mock(), Mock()
         load_model_and_tokenizer.return_value = (tokenizer, model)
-        load_from_disk.side_effect = [
-            {"train": HarmBenchTrain(Behavior=["harmful"])},
-            {"messages": [[{"content": "benign"}]]},
-        ]
+        load_prompt_sets.return_value = (["benign"], ["harmful"])
         get_all_layer_vectors.side_effect = [
             np.array([[1.0, 0.0]]),
             np.array([[0.0, 1.0]]),
@@ -70,6 +63,7 @@ class ExtractAllLayersTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         load_model_config.assert_called_once()
+        load_prompt_sets.assert_called_once_with()
         loaded_model_id, device = load_model_and_tokenizer.call_args.args
         self.assertEqual(loaded_model_id, "configured-model")
         self.assertIsInstance(device, torch.device)
@@ -77,7 +71,7 @@ class ExtractAllLayersTests(unittest.TestCase):
         makedirs.assert_called_once_with("./data", exist_ok=True)
         saved_path = savez.call_args.args[0]
         saved_arrays = savez.call_args.kwargs
-        self.assertEqual(saved_path, "./data/llama_all_layers.npz")
+        self.assertEqual(saved_path, f"./data/{loaded_model_id}_all_layers.npz")
         np.testing.assert_array_equal(
             saved_arrays["benign_states"], np.array([[[1.0, 0.0]]])
         )

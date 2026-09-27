@@ -2,11 +2,11 @@ import torch
 import numpy as np
 import os
 from tqdm import tqdm
-from datasets import load_from_disk
 from pathlib import Path
 from lib.model_utils import (
     load_model_and_tokenizer,
     load_model_config,
+    load_prompt_sets,
     tokenize_prompt,
 )
 
@@ -34,22 +34,7 @@ def main():
     tokenizer, model = load_model_and_tokenizer(model_id, device)
 
     print("Loading subset of datasets for layer sweep...")
-
-    try:
-        harmbench = load_from_disk("./data/harmbench")
-        hb_columns = harmbench["train"].column_names
-        hb_col = next((col for col in ["Behavior", "behavior", "prompt"] if col in hb_columns), hb_columns[0])
-        malicious_prompts = harmbench["train"][hb_col][:150]
-    except Exception as e:
-        print(f"Failed to load HarmBench: {e}")
-        malicious_prompts = []
-
-    try:
-        ultrachat = load_from_disk("./data/ultrachat")
-        benign_prompts = [msg[0]["content"] for msg in ultrachat["messages"][:150]]
-    except Exception as e:
-        print(f"Failed to load UltraChat: {e}")
-        benign_prompts = []
+    benign_prompts, malicious_prompts = load_prompt_sets()
 
     print("\nExtracting all layer states for Benign prompts...")
     all_benign_states = np.array([
@@ -65,11 +50,11 @@ def main():
 
     os.makedirs("./data", exist_ok=True)
     np.savez(
-        "./data/llama_all_layers.npz",
+        f"./data/{model_id}_all_layers.npz",
         benign_states=all_benign_states,
         malicious_states=all_malicious_states,
     )
-    print("\nSuccessfully saved 3D layer states to ./data/llama_all_layers.npz")
+    print(f"\nSuccessfully saved 3D layer states to ./data/{model_id}_all_layers.npz")
     return 0
 
 

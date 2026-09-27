@@ -1,13 +1,12 @@
 import os
 import numpy as np
-import pandas as pd
 import torch
 from pathlib import Path
-from datasets import load_from_disk
 from tqdm import tqdm
 from lib.model_utils import (
     load_model_and_tokenizer,
     load_model_config,
+    load_prompt_sets,
     tokenize_prompt,
 )
 
@@ -37,35 +36,10 @@ def main():
     print(f"Loading {model_id} onto GPU...")
     tokenizer, model = load_model_and_tokenizer(model_id, device)
 
-    # ---------------------------------------------------------
-    # 2. Dataset Setup
-    # ---------------------------------------------------------
     print("\nLoading datasets...")
     try:
-        harmbench = load_from_disk("./data/harmbench")
-        hb_columns = harmbench["train"].column_names
-        hb_col = next((col for col in ["Behavior", "behavior", "prompt"] if col in hb_columns), hb_columns[0])
-        hb_prompts = harmbench["train"][hb_col][:200]
+        benign_prompts, malicious_prompts = load_prompt_sets(require_benign=True)
     except Exception as e:
-        print(f"Failed to load HarmBench: {e}")
-        hb_prompts = []
-
-    print("Downloading AdvBench to supplement malicious baseline...")
-    advbench_url = "https://raw.githubusercontent.com/llm-attacks/llm-attacks/main/data/advbench/harmful_behaviors.csv"
-    try:
-        advbench_df = pd.read_csv(advbench_url)
-        advbench_prompts = advbench_df['goal'].tolist()
-    except Exception as e:
-        print(f"Failed to load AdvBench: {e}")
-        advbench_prompts = []
-
-    malicious_prompts = (list(hb_prompts) + advbench_prompts)[:400]
-
-    try:
-        ultrachat = load_from_disk("./data/ultrachat")
-        benign_prompts = [msg[0]["content"] for msg in ultrachat["messages"][:2000]]
-    except Exception as e:
-        print(f"Failed to load UltraChat: {e}")
         return 1
 
     print(f"Loaded {len(benign_prompts)} benign and {len(malicious_prompts)} malicious prompts.")

@@ -1,8 +1,16 @@
 from pathlib import Path
 
 import torch
+import pandas as pd
 import yaml
+from datasets import load_from_disk
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+
+ADVBENCH_URL = (
+    "https://raw.githubusercontent.com/llm-attacks/llm-attacks/main/"
+    "data/advbench/harmful_behaviors.csv"
+)
 
 
 def load_model_config(config_path):
@@ -48,3 +56,47 @@ def tokenize_prompt(prompt, tokenizer, device, max_length=1024):
         truncation=True,
         max_length=max_length,
     ).to(device)
+
+
+def load_prompt_sets(
+    harmbench_limit=200,
+    ultrachat_limit=2000,
+    malicious_limit=400,
+    require_benign=False,
+):
+    try:
+        harmbench = load_from_disk("./data/harmbench")
+        hb_columns = harmbench["train"].column_names
+        hb_column = next(
+            (column for column in ["Behavior", "behavior", "prompt"] if column in hb_columns),
+            hb_columns[0],
+        )
+        harmbench_prompts = harmbench["train"][hb_column][:harmbench_limit]
+    except Exception as error:
+        print(f"Failed to load HarmBench: {error}")
+        harmbench_prompts = []
+
+    print("Downloading AdvBench to supplement malicious baseline...")
+    try:
+        advbench = pd.read_csv(ADVBENCH_URL)
+        advbench_prompts = advbench["goal"].tolist()
+    except Exception as error:
+        print(f"Failed to load AdvBench: {error}")
+        advbench_prompts = []
+
+    try:
+        ultrachat = load_from_disk("./data/ultrachat")
+        benign_prompts = [
+            message[0]["content"]
+            for message in ultrachat["messages"][:ultrachat_limit]
+        ]
+    except Exception as error:
+        print(f"Failed to load UltraChat: {error}")
+        if require_benign:
+            raise
+        benign_prompts = []
+
+    malicious_prompts = (
+        list(harmbench_prompts) + advbench_prompts
+    )[:malicious_limit]
+    return benign_prompts, malicious_prompts

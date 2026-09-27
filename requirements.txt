@@ -12,3 +12,4 @@ numpy>=1.26.0
 tqdm
 PyYAML>=6.0
 pre-commit>=3.7.0
+matplotlib>=3.8.0

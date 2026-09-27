@@ -85,6 +85,43 @@ class ModelUtilsTests(unittest.TestCase):
         )
         inputs.to.assert_called_once_with(device)
 
+    @patch("lib.model_utils.pd.read_csv")
+    @patch("lib.model_utils.load_from_disk")
+    def test_load_prompt_sets_extracts_and_limits_all_sources(
+        self, load_from_disk, read_csv
+    ):
+        class HarmBenchTrain(dict):
+            column_names = ["behavior"]
+
+        load_from_disk.side_effect = [
+            {"train": HarmBenchTrain(behavior=["hb-1", "hb-2", "hb-3"])},
+            {"messages": [[{"content": "benign-1"}], [{"content": "benign-2"}]]},
+        ]
+        read_csv.return_value["goal"].tolist.return_value = ["adv-1", "adv-2"]
+
+        with patch("builtins.print"):
+            benign_prompts, malicious_prompts = model_utils.load_prompt_sets(
+                harmbench_limit=2,
+                ultrachat_limit=1,
+                malicious_limit=3,
+            )
+
+        self.assertEqual(benign_prompts, ["benign-1"])
+        self.assertEqual(malicious_prompts, ["hb-1", "hb-2", "adv-1"])
+        load_from_disk.assert_any_call("./data/harmbench")
+        load_from_disk.assert_any_call("./data/ultrachat")
+        read_csv.assert_called_once_with(model_utils.ADVBENCH_URL)
+
+    @patch("lib.model_utils.load_from_disk", side_effect=RuntimeError("missing"))
+    @patch("lib.model_utils.pd.read_csv")
+    def test_load_prompt_sets_requires_benign_when_requested(
+        self, read_csv, load_from_disk
+    ):
+        read_csv.return_value["goal"].tolist.return_value = []
+        with patch("builtins.print"):
+            with self.assertRaisesRegex(RuntimeError, "missing"):
+                model_utils.load_prompt_sets(require_benign=True)
+
 
 if __name__ == "__main__":
     unittest.main()
