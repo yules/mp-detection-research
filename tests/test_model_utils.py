@@ -121,6 +121,46 @@ class ModelUtilsTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "missing"):
                 model_utils.load_prompt_sets(require_benign=True)
 
+    @patch("lib.model_utils.load_from_disk")
+    def test_load_stress_test_prompts_constructs_limited_evaluation_prompts(
+        self, load_from_disk
+    ):
+        class Dataset(dict):
+            def __init__(self, column, values):
+                super().__init__({column: values})
+                self.column_names = [column]
+
+            def __len__(self):
+                return len(self[self.column_names[0]])
+
+        class HarmBenchTrain(dict):
+            column_names = ["Behavior"]
+
+        load_from_disk.side_effect = [
+            {"train": HarmBenchTrain(Behavior=["attack-1", "attack-2"])},
+            {"train": Dataset("suffix", ["suffix-1", "suffix-2"])},
+            {"train": Dataset("Prompt", ["wrapper-1", "wrapper-2"])},
+        ]
+
+        gcg_prompts, roleplay_prompts = model_utils.load_stress_test_prompts(
+            sample_limit=1
+        )
+
+        self.assertEqual(len(gcg_prompts), 1)
+        self.assertEqual(len(roleplay_prompts), 1)
+        self.assertTrue(gcg_prompts[0].startswith("attack-1 "))
+        self.assertEqual(
+            roleplay_prompts[0], "wrapper-1\n\nTask: attack-1"
+        )
+        self.assertEqual(
+            load_from_disk.call_args_list,
+            [
+                unittest.mock.call("./data/harmbench"),
+                unittest.mock.call("./data/adv_suffixes"),
+                unittest.mock.call("./data/jailbreak_prompts"),
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

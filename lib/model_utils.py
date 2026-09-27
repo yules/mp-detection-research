@@ -2,6 +2,7 @@ from pathlib import Path
 
 import torch
 import pandas as pd
+import random
 import yaml
 from datasets import load_from_disk
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -94,3 +95,47 @@ def load_prompt_sets(
         list(harmbench_prompts) + advbench_prompts
     )[:malicious_limit]
     return benign_prompts, malicious_prompts
+
+
+def load_stress_test_prompts(sample_limit=100):
+    harmbench = load_from_disk("./data/harmbench")
+    hb_columns = harmbench["train"].column_names
+    hb_column = next(
+        (column for column in ["Behavior", "behavior", "prompt"] if column in hb_columns),
+        hb_columns[0],
+    )
+    base_attacks = harmbench["train"][hb_column]
+
+    gcg_raw = load_from_disk("./data/adv_suffixes")
+    gcg_dataset = gcg_raw[list(gcg_raw.keys())[0]]
+    gcg_column = next(
+        (
+            column
+            for column in ["adv_suffix", "adversarial_suffix", "suffix", "text", "prompt"]
+            if column in gcg_dataset.column_names
+        ),
+        gcg_dataset.column_names[-1],
+    )
+
+    roleplay_raw = load_from_disk("./data/jailbreak_prompts")
+    roleplay_dataset = roleplay_raw[list(roleplay_raw.keys())[0]]
+    roleplay_column = next(
+        (column for column in ["Prompt", "prompt", "text"] if column in roleplay_dataset.column_names),
+        roleplay_dataset.column_names[0],
+    )
+
+    gcg_count = min(sample_limit, len(gcg_dataset), len(base_attacks))
+    roleplay_count = min(sample_limit, len(roleplay_dataset), len(base_attacks))
+    rng = random.Random(42)
+    gcg_suffixes = rng.sample(gcg_dataset[gcg_column], gcg_count)
+    roleplay_wrappers = rng.sample(roleplay_dataset[roleplay_column], roleplay_count)
+
+    gcg_prompts = [
+        f"{attack} {suffix}"
+        for attack, suffix in zip(base_attacks[:gcg_count], gcg_suffixes)
+    ]
+    roleplay_prompts = [
+        f"{wrapper}\n\nTask: {attack}"
+        for attack, wrapper in zip(base_attacks[:roleplay_count], roleplay_wrappers)
+    ]
+    return gcg_prompts, roleplay_prompts
