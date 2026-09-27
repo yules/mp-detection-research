@@ -1,7 +1,6 @@
-import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, mock_open, patch
 
 import torch
 import yaml
@@ -15,10 +14,10 @@ class ModelUtilsTests(unittest.TestCase):
             "model": {"name": "test-model"},
             "models": {"test-model": {"layer_idx": 3}},
         }
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.yml"
-            config_path.write_text(yaml.safe_dump(config))
-
+        config_path = Path("/virtual/config.yml")
+        with patch(
+            "pathlib.Path.open", mock_open(read_data=yaml.safe_dump(config))
+        ):
             result = model_utils.load_model_config(config_path)
 
         self.assertEqual(result, ("test-model", 3))
@@ -28,10 +27,10 @@ class ModelUtilsTests(unittest.TestCase):
             "model": {"name": "test-model"},
             "models": {"test-model": {"layer_idx": -1}},
         }
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.yml"
-            config_path.write_text(yaml.safe_dump(config))
-
+        config_path = Path("/virtual/config.yml")
+        with patch(
+            "pathlib.Path.open", mock_open(read_data=yaml.safe_dump(config))
+        ):
             with self.assertRaisesRegex(ValueError, "non-negative integer"):
                 model_utils.load_model_config(config_path)
 

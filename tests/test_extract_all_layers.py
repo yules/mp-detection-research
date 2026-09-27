@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -34,6 +35,7 @@ class ExtractAllLayersTests(unittest.TestCase):
         tokenize_prompt.assert_called_once_with("hello", tokenizer, device)
         model.assert_called_once_with(**inputs)
 
+    @patch("extract_all_layers.Path.resolve", return_value=Path("/virtual/project"))
     @patch("extract_all_layers.np.savez")
     @patch("extract_all_layers.os.makedirs")
     @patch("extract_all_layers.get_all_layer_vectors")
@@ -48,6 +50,7 @@ class ExtractAllLayersTests(unittest.TestCase):
         get_all_layer_vectors,
         makedirs,
         savez,
+        resolve,
     ):
         load_model_config.return_value = ("configured-model", 5)
         tokenizer, model = Mock(), Mock()
@@ -62,7 +65,10 @@ class ExtractAllLayersTests(unittest.TestCase):
             result = extract_all_layers.main()
 
         self.assertEqual(result, 0)
-        load_model_config.assert_called_once()
+        resolve.assert_called_once()
+        load_model_config.assert_called_once_with(
+            Path("/virtual/project/config/config.yml")
+        )
         load_prompt_sets.assert_called_once_with()
         loaded_model_id, device = load_model_and_tokenizer.call_args.args
         self.assertEqual(loaded_model_id, "configured-model")
