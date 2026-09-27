@@ -2,45 +2,19 @@ import os
 import numpy as np
 import pandas as pd
 import torch
-import yaml
 from pathlib import Path
 from datasets import load_from_disk
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
-def load_model_config(config_path):
-    """Load the selected model and its latent-vector layer index."""
-    with Path(config_path).open() as config_file:
-        config = yaml.safe_load(config_file)
-
-    model_id = config["model"]["name"]
-    model_config = config["models"].get(model_id)
-    if model_config is None:
-        raise ValueError(f"Model {model_id!r} is not defined in config.models")
-
-    layer_idx = model_config["layer_idx"]
-    if not isinstance(layer_idx, int) or layer_idx < 0:
-        raise ValueError(
-            f"config.models[{model_id!r}].layer_idx must be a non-negative integer"
-        )
-    return model_id, layer_idx
+from lib.model_utils import (
+    load_model_and_tokenizer,
+    load_model_config,
+    tokenize_prompt,
+)
 
 
 def get_latent_vector_sequential(prompt, tokenizer, model, device, layer_idx):
+    inputs = tokenize_prompt(prompt, tokenizer, device)
 
-    formatted_prompt = tokenizer.apply_chat_template(
-        [{"role": "user", "content": prompt}], 
-        tokenize=False, 
-        add_generation_prompt=True
-    )
-    
-    inputs = tokenizer(
-        formatted_prompt, 
-        return_tensors="pt", 
-        truncation=True, 
-        max_length=1024
-    ).to(device)
-    
     with torch.no_grad():
         outputs = model(**inputs)
         
@@ -60,16 +34,8 @@ def main():
     config_path = Path(__file__).resolve().parent / "config" / "config.yml"
     model_id, layer_idx = load_model_config(config_path)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id, padding_side="left")
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
     print(f"Loading {model_id} onto GPU...")
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        output_hidden_states=True,
-        torch_dtype=torch.bfloat16
-    ).to(device)
+    tokenizer, model = load_model_and_tokenizer(model_id, device)
 
     # ---------------------------------------------------------
     # 2. Dataset Setup
