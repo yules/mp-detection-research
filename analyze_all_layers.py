@@ -49,7 +49,7 @@ peak_layer = np.argmax(auc_scores)
 peak_auc = auc_scores[peak_layer]
 plt.plot(peak_layer, peak_auc, marker='*', color='red', markersize=15, label=f'Peak: Layer {peak_layer} ({peak_auc:.3f})')
 
-plt.title('Llama-3.2-3B: Malicious Intent Detection by Layer')
+plt.title(f'{model_id}: Malicious Intent Detection by Layer')
 plt.xlabel('Hidden Layer Index (0 = Embeddings)')
 plt.ylabel('RepE ROC-AUC Score')
 plt.ylim(0.4, 1.05)
