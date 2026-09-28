@@ -1,21 +1,25 @@
 import torch
 import numpy as np
 import random
-import os
+from pathlib import Path
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from datasets import load_from_disk
+from lib.model_utils import load_model_config
 
 def main():
     # ---------------------------------------------------------
-    # 1. Reconstruct Layer 12 Harm Vector from Cache
+    # 1. Load configured model and reconstruct its harm vector
     # ---------------------------------------------------------
+    config_path = Path(__file__).resolve().parent / "config" / "config.yml"
+    model_id, layer_idx = load_model_config(config_path)
+    num_layers = layer_idx
+
     print("Loading cached layer data to calibrate the radar...")
-    model_id = "meta-llama/Llama-3.2-3B-Instruct"
     data = np.load(f"./data/{model_id}_all_layers.npz")
 
-    X_benign = data["benign_states"][:, 12, :]
-    X_malicious = data["malicious_states"][:, 12, :]
+    X_benign = data["benign_states"][:, layer_idx, :]
+    X_malicious = data["malicious_states"][:, layer_idx, :]
 
     calib_size = 50
     mu_benign = np.mean(X_benign[:calib_size], axis=0)
@@ -24,22 +28,21 @@ def main():
     harm_vector = mu_malicious - mu_benign
     harm_vector = harm_vector / np.linalg.norm(harm_vector)
     threshold = np.percentile(np.dot(X_benign, harm_vector), 99)
-    print(f"Layer 12 Tripwire Threshold established at: {threshold:.4f}\n")
+    print(f"Layer 21 Tripwire Threshold established at: {threshold:.4f}\n")
 
     # ---------------------------------------------------------
     # 2. Early-Exit Model Optimization
     # ---------------------------------------------------------
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    model_id = "meta-llama/Llama-3.2-3B-Instruct"
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
-    print(f"Loading {model_id} and pruning architecture for early-exit...")
+    print(f"Loading {model_id} and retaining {num_layers} layers for early-exit...")
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype=torch.bfloat16,
     ).to(device)
-    model.model.layers = model.model.layers[:13]
-    print("Sliced model to 13 layers.\n")
+    model.model.layers = model.model.layers[:num_layers]
+    print(f"Sliced model to {num_layers} layers (hidden state {layer_idx}).\n")
 
     def score_prompt_early_exit(prompt):
         formatted = tokenizer.apply_chat_template(
@@ -113,11 +116,11 @@ def main():
     )
 
     print("\n" + "=" * 40)
-    print("STRESS TEST RESULTS (LAYER 12 EARLY-EXIT)")
+    print(f"STRESS TEST RESULTS (LAYER {layer_idx} EARLY-EXIT)")
     print("=" * 40)
     print("Base Attacks Baseline (Expected): ~99%")
-    print(f"GCG Suffixes Blocked:             {gcg_caught} / 100")
-    print(f"Roleplay Wrappers Blocked:        {roleplay_caught} / 100")
+    print(f"GCG Suffixes Blocked:             {gcg_caught} / {len(gcg_prompts)}")
+    print(f"Roleplay Wrappers Blocked:        {roleplay_caught} / {len(roleplay_prompts)}")
     print("=" * 40)
 
 
