@@ -37,6 +37,9 @@ This makes the method a latent-space anomaly detector based on internal model re
 
 - `download_datasets.py` — downloads and stores the malicious and benign datasets locally.
 - `extract_vectors.py` — loads the model, extracts latent vectors for each prompt, and writes the processed feature set.
+- `extract_all_layers.py` — runs a forward pass for each prompt and stores normalized hidden-state vectors for every layer, producing a per-layer representation stack.
+- `analyze_all_layers.py` — sweeps the hidden layers, computes a layer-wise ROC-AUC using a simple RepE score, and saves a plot of layer performance.
+- `advanced_detection_tests.py` — calibrates a harmful-direction threshold using a chosen layer, then evaluates adversarial stress tests such as GCG suffixes and jailbreak wrappers against that threshold.
 - `multi_vector_repe.py` — runs the multi-vector RepE detector and reports evaluation metrics.
 - `prev_detection_scripts/` — earlier baseline implementations, including a single-vector RepE detector and a Mahalanobis-based anomaly detector.
 - `data/` — cached datasets and generated latent vectors.
@@ -95,7 +98,33 @@ python download_datasets.py
 python extract_vectors.py
 ```
 
-This script loads the model, extracts hidden-state vectors for the prompt sets, and saves them to the data directory.
+This script loads the model, extracts one hidden-state vector per prompt for the selected layer, and saves them to the data directory.
+
+### 2a) Optional: extract all-layer latent states
+
+```bash
+python extract_all_layers.py
+```
+
+This script performs the same model pass but keeps the normalized hidden state from every transformer layer, saving a 3D array of shape `(num_prompts, num_layers, hidden_dim)` for both benign and malicious prompts to `data/<model_id>_all_layers.npz`.
+
+This is useful when you want to inspect which layer is most informative before committing to a single chosen layer for the full detector.
+
+### 2b) Optional: analyze layer-by-layer detection quality
+
+```bash
+python analyze_all_layers.py
+```
+
+This script loads the all-layer cache, computes a simple RepE score at each layer, and plots ROC-AUC as a function of layer depth. It saves a chart to `data/<model_id>_layer_trajectory.png` and helps identify the strongest hidden layer for downstream analysis.
+
+### 2c) Optional: run advanced detection stress tests
+
+```bash
+python advanced_detection_tests.py
+```
+
+This script calibrates a harmful-direction threshold from the selected layer, then stress-tests the detector against adversarial prompt variants such as GCG-style suffix attacks and roleplay/developer-mode jailbreak wrappers. It is useful for checking whether a discovered layer remains robust under stronger attack patterns beyond the normal evaluation split.
 
 ### 3) Run the anomaly detector
 
