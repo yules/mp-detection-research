@@ -1,4 +1,4 @@
-# Multi-Vector REPE Anomaly Detector
+# Anomaly Detecting Research
 
 A research-oriented anomaly detection pipeline for identifying malicious or harmful model behavior using latent-space analysis and a multi-vector variant of Representation Engineering (RepE).
 
@@ -189,4 +189,4 @@ The MIT license applies to the code in this repository. Third-party models and d
 
 ## Quick summary
 
-This repo implements a multi-vector representation-based anomaly detector that learns harmful activation directions from malicious prompts and flags suspicious behavior by measuring how strongly a new prompt aligns with those harmful subspaces.
+This repo implements several latent-space detection methods for identifying harmful behavior, including a multi-vector RepE detector, layer-wise anomaly sweeps, and adversarial stress tests that probe whether a chosen harmful direction remains effective against stronger prompt attacks.
