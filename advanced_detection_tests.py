@@ -68,41 +68,78 @@ def main():
     # 3. Generate Stress Tests (Dynamic Column Resolution)
     # ---------------------------------------------------------
     print("Loading stress test datasets from local disk...")
+
+    # --- Benign Prompts (UltraChat) ---
+    ultrachat_raw = load_from_disk("./data/ultrachat")
+    if hasattr(ultrachat_raw, "keys") and "train" in ultrachat_raw:
+        ultrachat_dataset = ultrachat_raw["train"]
+    elif hasattr(ultrachat_raw, "keys") and not hasattr(ultrachat_raw, "column_names"):
+        ultrachat_dataset = ultrachat_raw[list(ultrachat_raw.keys())[0]]
+    else:
+        ultrachat_dataset = ultrachat_raw
+
+    benign_sample_size = min(100, len(ultrachat_dataset))
+    if "prompt" in ultrachat_dataset.column_names:
+        benign_prompts = list(ultrachat_dataset["prompt"][:benign_sample_size])
+    elif "messages" in ultrachat_dataset.column_names:
+        benign_prompts = [
+            msg[0]["content"] if isinstance(msg, list) and isinstance(msg[0], dict) else msg
+            for msg in ultrachat_dataset["messages"][:benign_sample_size]
+        ]
+    else:
+        benign_col = ultrachat_dataset.column_names[0]
+        benign_prompts = list(ultrachat_dataset[benign_col][:benign_sample_size])
+
+    # --- Base Malicious Attacks (HarmBench) ---
     harmbench = load_from_disk("./data/harmbench")
-    hb_columns = harmbench["train"].column_names
+    hb_dataset = harmbench["train"] if hasattr(harmbench, "keys") and "train" in harmbench else harmbench
+    hb_columns = hb_dataset.column_names
     hb_col = next((col for col in ["Behavior", "behavior", "prompt"] if col in hb_columns), hb_columns[0])
-    base_attacks = harmbench["train"][hb_col][:100]
+    base_attacks = list(hb_dataset[hb_col][:100])
+    malicious_prompts = base_attacks
 
     # --- GCG Gibberish Suffixes ---
     gcg_raw = load_from_disk("./data/adv_suffixes")
-    gcg_dataset = gcg_raw[list(gcg_raw.keys())[0]]
+    gcg_dataset = gcg_raw[list(gcg_raw.keys())[0]] if hasattr(gcg_raw, "keys") and not hasattr(gcg_raw, "column_names") else gcg_raw
 
     print(f"GCG Columns detected: {gcg_dataset.column_names}")
     gcg_col = next((col for col in ["adv_suffix", "adversarial_suffix", "suffix", "text", "prompt"] if col in gcg_dataset.column_names), gcg_dataset.column_names[-1])
 
     # Cap sample size to prevent ValueError
-    gcg_sample_size = min(100, len(gcg_dataset))
+    gcg_sample_size = min(100, len(gcg_dataset), len(base_attacks))
     random.seed(42)
     sampled_suffixes = random.sample(gcg_dataset[gcg_col], gcg_sample_size)
     gcg_prompts = [f"{attack} {suffix}" for attack, suffix in zip(base_attacks[:gcg_sample_size], sampled_suffixes)]
 
     # --- Roleplay / Developer Mode Wrappers ---
     dan_raw = load_from_disk("./data/jailbreak_prompts")
-    dan_dataset = dan_raw[list(dan_raw.keys())[0]]
+    dan_dataset = dan_raw[list(dan_raw.keys())[0]] if hasattr(dan_raw, "keys") and not hasattr(dan_raw, "column_names") else dan_raw
 
     print(f"DAN Columns detected: {dan_dataset.column_names}")
     dan_col = next((col for col in ["Prompt", "prompt", "text"] if col in dan_dataset.column_names), dan_dataset.column_names[0])
 
     # Cap sample size to prevent ValueError
-    dan_sample_size = min(100, len(dan_dataset))
+    dan_sample_size = min(100, len(dan_dataset), len(base_attacks))
     sampled_jailbreaks = random.sample(dan_dataset[dan_col], dan_sample_size)
     roleplay_prompts = [f"{jailbreak}\n\nTask: {attack}" for attack, jailbreak in zip(base_attacks[:dan_sample_size], sampled_jailbreaks)]
 
-    print(f"\nGenerated {len(gcg_prompts)} GCG attacks and {len(roleplay_prompts)} Roleplay attacks.")
+    print(f"\nLoaded {len(benign_prompts)} benign prompts, {len(malicious_prompts)} malicious base attacks, {len(gcg_prompts)} GCG attacks, and {len(roleplay_prompts)} Roleplay attacks.")
 
     # ---------------------------------------------------------
     # 4. Evaluate Stress Tests
     # ---------------------------------------------------------
+    print("\nTesting Benign Prompts...")
+    benign_passed = sum(
+        score_prompt_early_exit(prompt) <= threshold
+        for prompt in tqdm(benign_prompts)
+    )
+
+    print("\nTesting Malicious Base Attacks...")
+    malicious_caught = sum(
+        score_prompt_early_exit(prompt) > threshold
+        for prompt in tqdm(malicious_prompts)
+    )
+
     print("\nTesting GCG Suffix Attacks...")
     gcg_caught = sum(
         score_prompt_early_exit(prompt) > threshold
@@ -118,10 +155,22 @@ def main():
     print("\n" + "=" * 40)
     print(f"STRESS TEST RESULTS (LAYER {auc_layer} EARLY-EXIT)")
     print("=" * 40)
-    print("Base Attacks Baseline (Expected): ~99%")
+    print(f"Benign Prompts Passed:            {benign_passed} / {len(benign_prompts)}")
+    print(f"Base Attacks Blocked:             {malicious_caught} / {len(malicious_prompts)}")
     print(f"GCG Suffixes Blocked:             {gcg_caught} / {len(gcg_prompts)}")
     print(f"Roleplay Wrappers Blocked:        {roleplay_caught} / {len(roleplay_prompts)}")
     print("=" * 40)
+
+    return {
+        "benign_passed": benign_passed,
+        "benign_total": len(benign_prompts),
+        "malicious_caught": malicious_caught,
+        "malicious_total": len(malicious_prompts),
+        "gcg_caught": gcg_caught,
+        "gcg_total": len(gcg_prompts),
+        "roleplay_caught": roleplay_caught,
+        "roleplay_total": len(roleplay_prompts),
+    }
 
 
 if __name__ == "__main__":
