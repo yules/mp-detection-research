@@ -7,6 +7,19 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from datasets import load_from_disk
 from lib.model_utils import load_model_config
 
+def to_dataset(dataset_or_dict):
+    """Extract a single Dataset from a DatasetDict or dict wrapper if needed."""
+    if hasattr(dataset_or_dict, "column_names") and isinstance(dataset_or_dict.column_names, dict):
+        if "train" in dataset_or_dict:
+            return dataset_or_dict["train"]
+        return dataset_or_dict[list(dataset_or_dict.keys())[0]]
+    if hasattr(dataset_or_dict, "keys") and not hasattr(dataset_or_dict, "column_names"):
+        if "train" in dataset_or_dict:
+            return dataset_or_dict["train"]
+        return dataset_or_dict[list(dataset_or_dict.keys())[0]]
+    return dataset_or_dict
+
+
 def main():
     # ---------------------------------------------------------
     # 1. Load configured model and reconstruct its harm vector
@@ -70,14 +83,7 @@ def main():
     print("Loading stress test datasets from local disk...")
 
     # --- Benign Prompts (UltraChat) ---
-    ultrachat_raw = load_from_disk("./data/ultrachat")
-    if hasattr(ultrachat_raw, "keys") and "train" in ultrachat_raw:
-        ultrachat_dataset = ultrachat_raw["train"]
-    elif hasattr(ultrachat_raw, "keys") and not hasattr(ultrachat_raw, "column_names"):
-        ultrachat_dataset = ultrachat_raw[list(ultrachat_raw.keys())[0]]
-    else:
-        ultrachat_dataset = ultrachat_raw
-
+    ultrachat_dataset = to_dataset(load_from_disk("./data/ultrachat"))
     benign_sample_size = min(100, len(ultrachat_dataset))
     if "prompt" in ultrachat_dataset.column_names:
         benign_prompts = list(ultrachat_dataset["prompt"][:benign_sample_size])
@@ -91,17 +97,14 @@ def main():
         benign_prompts = list(ultrachat_dataset[benign_col][:benign_sample_size])
 
     # --- Base Malicious Attacks (HarmBench) ---
-    harmbench = load_from_disk("./data/harmbench")
-    hb_dataset = harmbench["train"] if hasattr(harmbench, "keys") and "train" in harmbench else harmbench
-    hb_columns = hb_dataset.column_names
+    harmbench_dataset = to_dataset(load_from_disk("./data/harmbench"))
+    hb_columns = harmbench_dataset.column_names
     hb_col = next((col for col in ["Behavior", "behavior", "prompt"] if col in hb_columns), hb_columns[0])
-    base_attacks = list(hb_dataset[hb_col][:100])
+    base_attacks = list(harmbench_dataset[hb_col][:100])
     malicious_prompts = base_attacks
 
     # --- GCG Gibberish Suffixes ---
-    gcg_raw = load_from_disk("./data/adv_suffixes")
-    gcg_dataset = gcg_raw[list(gcg_raw.keys())[0]] if hasattr(gcg_raw, "keys") and not hasattr(gcg_raw, "column_names") else gcg_raw
-
+    gcg_dataset = to_dataset(load_from_disk("./data/adv_suffixes"))
     print(f"GCG Columns detected: {gcg_dataset.column_names}")
     gcg_col = next((col for col in ["adv_suffix", "adversarial_suffix", "suffix", "text", "prompt"] if col in gcg_dataset.column_names), gcg_dataset.column_names[-1])
 
@@ -112,9 +115,7 @@ def main():
     gcg_prompts = [f"{attack} {suffix}" for attack, suffix in zip(base_attacks[:gcg_sample_size], sampled_suffixes)]
 
     # --- Roleplay / Developer Mode Wrappers ---
-    dan_raw = load_from_disk("./data/jailbreak_prompts")
-    dan_dataset = dan_raw[list(dan_raw.keys())[0]] if hasattr(dan_raw, "keys") and not hasattr(dan_raw, "column_names") else dan_raw
-
+    dan_dataset = to_dataset(load_from_disk("./data/jailbreak_prompts"))
     print(f"DAN Columns detected: {dan_dataset.column_names}")
     dan_col = next((col for col in ["Prompt", "prompt", "text"] if col in dan_dataset.column_names), dan_dataset.column_names[0])
 
