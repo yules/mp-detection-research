@@ -100,32 +100,6 @@ python extract_vectors.py
 
 This script loads the model, extracts one hidden-state vector per prompt for the selected layer, and saves them to the data directory.
 
-### 2a) Optional: extract all-layer latent states
-
-```bash
-python extract_all_layers.py
-```
-
-This script performs the same model pass but keeps the normalized hidden state from every transformer layer, saving a 3D array of shape `(num_prompts, num_layers, hidden_dim)` for both benign and malicious prompts to `data/<model_id>_all_layers.npz`.
-
-This is useful when you want to inspect which layer is most informative before committing to a single chosen layer for the full detector.
-
-### 2b) Optional: analyze layer-by-layer detection quality
-
-```bash
-python analyze_all_layers.py
-```
-
-This script loads the all-layer cache, computes a simple RepE score at each layer, and plots ROC-AUC as a function of layer depth. It saves a chart to `data/<model_id>_layer_trajectory.png` and helps identify the strongest hidden layer for downstream analysis.
-
-### 2c) Optional: run early-exit detection tests
-
-```bash
-python early_exit_detection.py
-```
-
-This script calibrates a harmful-direction threshold from the selected layer, then evaluates the early-exit detector across benign prompts (UltraChat), base malicious attacks (HarmBench), and adversarial prompt variants such as GCG-style suffix attacks and roleplay/developer-mode jailbreak wrappers. It is useful for checking whether a discovered layer remains robust under stronger attack patterns beyond the normal evaluation split.
-
 ### 3) Run the anomaly detector
 
 ```bash
@@ -152,6 +126,33 @@ The detector reports metrics such as:
 - attacks missed
 
 The current implementation uses a calibration set of 100 benign and 100 malicious samples, with the remainder reserved for evaluation.
+
+### 4) Optional: extract all-layer latent states
+
+```bash
+python extract_all_layers.py
+```
+
+This script performs the same model pass but keeps the normalized hidden state from every transformer layer, saving a 3D array of shape `(num_prompts, num_layers, hidden_dim)` for both benign and malicious prompts to `data/<model_id>_all_layers.npz`.
+
+This is useful when you want to inspect which layer is most informative before committing to a single chosen layer for the full detector.
+
+### 4a) Optional: analyze layer-by-layer detection quality
+
+```bash
+python analyze_all_layers.py
+```
+
+This script loads the all-layer cache, computes a simple RepE score at each layer, and plots ROC-AUC as a function of layer depth. It saves a chart to `data/<model_id>_layer_trajectory.png` and helps identify the strongest hidden layer for downstream analysis.
+
+### 4b) Optional: run early-exit detection tests
+
+```bash
+python early_exit_detection.py
+```
+
+This script calibrates a harmful-direction threshold from the selected layer, then evaluates the early-exit detector across benign prompts (UltraChat), base malicious attacks (HarmBench), and adversarial prompt variants such as GCG-style suffix attacks and roleplay/developer-mode jailbreak wrappers. It is useful for checking whether a discovered layer remains robust under stronger attack patterns beyond the normal evaluation split.
+
 
 ## Model configuration
 
