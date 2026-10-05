@@ -12,14 +12,14 @@ def main():
     # 1. Load configured model and reconstruct its harm vector
     # ---------------------------------------------------------
     config_path = Path(__file__).resolve().parent / "config" / "config.yml"
-    model_id, layer_idx = load_model_config(config_path)
-    num_layers = layer_idx
+    model_id, _, auc_layer = load_model_config(config_path)
+    num_layers = auc_layer
 
     print("Loading cached layer data to calibrate the radar...")
     data = np.load(f"./data/{model_id}_all_layers.npz")
 
-    X_benign = data["benign_states"][:, layer_idx, :]
-    X_malicious = data["malicious_states"][:, layer_idx, :]
+    X_benign = data["benign_states"][:, auc_layer, :]
+    X_malicious = data["malicious_states"][:, auc_layer, :]
 
     calib_size = 50
     mu_benign = np.mean(X_benign[:calib_size], axis=0)
@@ -28,7 +28,7 @@ def main():
     harm_vector = mu_malicious - mu_benign
     harm_vector = harm_vector / np.linalg.norm(harm_vector)
     threshold = np.percentile(np.dot(X_benign, harm_vector), 99)
-    print(f"Layer 21 Tripwire Threshold established at: {threshold:.4f}\n")
+    print(f"Layer {auc_layer} Tripwire Threshold established at: {threshold:.4f}\n")
 
     # ---------------------------------------------------------
     # 2. Early-Exit Model Optimization
@@ -42,7 +42,7 @@ def main():
         torch_dtype=torch.bfloat16,
     ).to(device)
     model.model.layers = model.model.layers[:num_layers]
-    print(f"Sliced model to {num_layers} layers (hidden state {layer_idx}).\n")
+    print(f"Sliced model to {num_layers} layers (hidden state {auc_layer}).\n")
 
     def score_prompt_early_exit(prompt):
         formatted = tokenizer.apply_chat_template(
@@ -116,7 +116,7 @@ def main():
     )
 
     print("\n" + "=" * 40)
-    print(f"STRESS TEST RESULTS (LAYER {layer_idx} EARLY-EXIT)")
+    print(f"STRESS TEST RESULTS (LAYER {auc_layer} EARLY-EXIT)")
     print("=" * 40)
     print("Base Attacks Baseline (Expected): ~99%")
     print(f"GCG Suffixes Blocked:             {gcg_caught} / {len(gcg_prompts)}")

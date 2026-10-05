@@ -31,7 +31,7 @@ def main():
     print(f"Hardware backend initialized: {device}")
 
     config_path = Path(__file__).resolve().parent / "config" / "config.yml"
-    model_id, layer_idx = load_model_config(config_path)
+    model_id, layer_idx, _ = load_model_config(config_path)
 
     print(f"Loading {model_id} onto GPU...")
     tokenizer, model = load_model_and_tokenizer(model_id, device)

@@ -23,7 +23,7 @@ def load_latent_vectors(model_id):
 
 
 def load_model_config(config_path):
-    """Load the selected model and its latent-vector layer index."""
+    """Load the selected model and its latent-vector and AUC layer indices."""
     with Path(config_path).open() as config_file:
         config = yaml.safe_load(config_file)
 
@@ -33,11 +33,16 @@ def load_model_config(config_path):
         raise ValueError(f"Model {model_id!r} is not defined in config.models")
 
     layer_idx = model_config["layer_idx"]
-    if not isinstance(layer_idx, int) or layer_idx < 0:
-        raise ValueError(
-            f"config.models[{model_id!r}].layer_idx must be a non-negative integer"
-        )
-    return model_id, layer_idx
+    auc_layer = model_config["auc_layer"]
+    for layer_key, layer_value in (
+        ("layer_idx", layer_idx),
+        ("auc_layer", auc_layer),
+    ):
+        if not isinstance(layer_value, int) or layer_value < 0:
+            raise ValueError(
+                f"config.models[{model_id!r}].{layer_key} must be a non-negative integer"
+            )
+    return model_id, layer_idx, auc_layer
 
 
 def load_model_and_tokenizer(model_id, device):

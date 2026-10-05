@@ -35,7 +35,9 @@ class ModelUtilsTests(unittest.TestCase):
     def test_load_model_config_returns_selected_model_and_layer(self):
         config = {
             "model": {"name": "test-model"},
-            "models": {"test-model": {"layer_idx": 3}},
+            "models": {
+                "test-model": {"layer_idx": 3, "auc_layer": 5},
+            },
         }
         config_path = Path("/virtual/config.yml")
         with patch(
@@ -43,19 +45,33 @@ class ModelUtilsTests(unittest.TestCase):
         ):
             result = model_utils.load_model_config(config_path)
 
-        self.assertEqual(result, ("test-model", 3))
+        self.assertEqual(result, ("test-model", 3, 5))
 
     def test_load_model_config_rejects_invalid_layer(self):
         config = {
             "model": {"name": "test-model"},
-            "models": {"test-model": {"layer_idx": -1}},
+            "models": {
+                "test-model": {"layer_idx": -1, "auc_layer": 5},
+            },
         }
-        config_path = Path("/virtual/config.yml")
         with patch(
             "pathlib.Path.open", mock_open(read_data=yaml.safe_dump(config))
         ):
             with self.assertRaisesRegex(ValueError, "non-negative integer"):
-                model_utils.load_model_config(config_path)
+                model_utils.load_model_config(Path("/virtual/config.yml"))
+
+    def test_load_model_config_rejects_invalid_auc_layer(self):
+        config = {
+            "model": {"name": "test-model"},
+            "models": {
+                "test-model": {"layer_idx": 3, "auc_layer": -1},
+            },
+        }
+        with patch(
+            "pathlib.Path.open", mock_open(read_data=yaml.safe_dump(config))
+        ):
+            with self.assertRaisesRegex(ValueError, "auc_layer.*non-negative integer"):
+                model_utils.load_model_config(Path("/virtual/config.yml"))
 
     @patch("lib.model_utils.AutoModelForCausalLM.from_pretrained")
     @patch("lib.model_utils.AutoTokenizer.from_pretrained")

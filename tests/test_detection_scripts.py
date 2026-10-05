@@ -50,7 +50,7 @@ class DetectionScriptsTests(unittest.TestCase):
         to_csv,
         resolve,
     ):
-        load_model_config.return_value = ("test-model-repe", 12)
+        load_model_config.return_value = ("test-model-repe", 12, 11)
         rng = np.random.RandomState(42)
         n_benign, n_malicious, dim = 60, 60, 16
         fake_data = {
@@ -82,7 +82,7 @@ class DetectionScriptsTests(unittest.TestCase):
         load_latent_vectors,
         to_csv,
     ):
-        load_model_config.return_value = ("test-model-single", 8)
+        load_model_config.return_value = ("test-model-single", 8, 7)
         rng = np.random.RandomState(42)
         n_benign, n_malicious, dim = 60, 60, 16
         fake_data = {
@@ -108,7 +108,7 @@ class DetectionScriptsTests(unittest.TestCase):
         load_latent_vectors,
         to_csv,
     ):
-        load_model_config.return_value = ("test-model-mahalanobis", 4)
+        load_model_config.return_value = ("test-model-mahalanobis", 4, 3)
         rng = np.random.RandomState(42)
         n_benign, n_malicious, dim = 200, 50, 160
         fake_data = {

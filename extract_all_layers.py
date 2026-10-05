@@ -30,7 +30,7 @@ def get_all_layer_vectors(prompt, tokenizer, model, device):
 def main():
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     config_path = Path(__file__).resolve().parent / "config" / "config.yml"
-    model_id, _ = load_model_config(config_path)
+    model_id, _, _ = load_model_config(config_path)
     tokenizer, model = load_model_and_tokenizer(model_id, device)
 
     print("Loading subset of datasets for layer sweep...")

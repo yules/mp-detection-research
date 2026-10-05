@@ -4,5 +4,7 @@ model:
 models:
   meta-llama/Llama-3.2-3B-Instruct:
     layer_idx: 14
+    auc_layer: 12
   Qwen/Qwen2.5-3B-Instruct:
     layer_idx: 18
+    auc_layer: 22

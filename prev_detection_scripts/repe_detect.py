@@ -16,7 +16,7 @@ from lib.model_utils import load_latent_vectors, load_model_config
 
 def main():
     config_path = project_root / "config" / "config.yml"
-    model_id, _ = load_model_config(config_path)
+    model_id, _, _ = load_model_config(config_path)
 
     # 1. Load cached vectors
     X_benign, X_malicious, prompts_benign, prompts_malicious = load_latent_vectors(

@@ -26,7 +26,7 @@ def evaluate_status(row):
 
 def main():
     config_path = project_root / "config" / "config.yml"
-    model_id, _ = load_model_config(config_path)
+    model_id, _, _ = load_model_config(config_path)
 
     X_benign, X_malicious, prompts_benign, prompts_malicious = load_latent_vectors(
         model_id

@@ -14,21 +14,24 @@ class ExtractVectorsTests(unittest.TestCase):
     def test_load_model_config_resolves_selected_model(self):
         config = {
             "model": {"name": "test-model"},
-            "models": {"test-model": {"layer_idx": 7}},
+            "models": {"test-model": {"layer_idx": 7, "auc_layer": 5}},
         }
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.yml"
             config_path.write_text(yaml.safe_dump(config))
 
-            model_id, layer_idx = extract_vectors.load_model_config(config_path)
+            model_id, layer_idx, auc_layer = extract_vectors.load_model_config(
+                config_path
+            )
 
         self.assertEqual(model_id, "test-model")
         self.assertEqual(layer_idx, 7)
+        self.assertEqual(auc_layer, 5)
 
     def test_load_model_config_rejects_unknown_model(self):
         config = {
             "model": {"name": "missing-model"},
-            "models": {"known-model": {"layer_idx": 7}},
+            "models": {"known-model": {"layer_idx": 7, "auc_layer": 5}},
         }
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.yml"
@@ -77,7 +80,7 @@ class ExtractVectorsTests(unittest.TestCase):
         savez,
         resolve,
     ):
-        load_model_config.return_value = ("test-org/test-model", 7)
+        load_model_config.return_value = ("test-org/test-model", 7, 5)
         tokenizer, model = Mock(), Mock()
         load_model_and_tokenizer.return_value = (tokenizer, model)
         load_prompt_sets.return_value = (["benign"], ["harmful"])

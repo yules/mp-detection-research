@@ -55,7 +55,7 @@ class ExtractAllLayersTests(unittest.TestCase):
         savez,
         resolve,
     ):
-        load_model_config.return_value = ("configured-model", 5)
+        load_model_config.return_value = ("configured-model", 5, 6)
         tokenizer, model = Mock(), Mock()
         load_model_and_tokenizer.return_value = (tokenizer, model)
         load_prompt_sets.return_value = (["benign"], ["harmful"])

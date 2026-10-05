@@ -11,7 +11,7 @@ NUM_LAYERS = 29
 # 1. Load Data
 print("Loading cached layer vectors...")
 config_path = Path(__file__).resolve().parent / "config" / "config.yml"
-model_id, _ = load_model_config(config_path)
+model_id, _, _ = load_model_config(config_path)
 data = np.load(f"./data/{model_id}_all_layers.npz")
 all_benign_states = data["benign_states"]
 all_malicious_states = data["malicious_states"]
