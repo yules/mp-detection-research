@@ -5,16 +5,16 @@ from unittest.mock import Mock, patch
 import numpy as np
 import torch
 
-import advanced_detection_tests
+import multi_layer_detection
 
 
-class AdvancedDetectionTests(unittest.TestCase):
-    @patch("advanced_detection_tests.Path.resolve", return_value=Path("/virtual/project/advanced_detection_tests.py"))
-    @patch("advanced_detection_tests.AutoModelForCausalLM.from_pretrained")
-    @patch("advanced_detection_tests.AutoTokenizer.from_pretrained")
-    @patch("advanced_detection_tests.load_from_disk")
-    @patch("advanced_detection_tests.np.load")
-    @patch("advanced_detection_tests.load_model_config")
+class MultiLayerDetectionTests(unittest.TestCase):
+    @patch("multi_layer_detection.Path.resolve", return_value=Path("/virtual/project/multi_layer_detection.py"))
+    @patch("multi_layer_detection.AutoModelForCausalLM.from_pretrained")
+    @patch("multi_layer_detection.AutoTokenizer.from_pretrained")
+    @patch("multi_layer_detection.load_from_disk")
+    @patch("multi_layer_detection.np.load")
+    @patch("multi_layer_detection.load_model_config")
     def test_main_evaluates_all_four_prompt_types(
         self,
         load_model_config,
@@ -69,7 +69,7 @@ class AdvancedDetectionTests(unittest.TestCase):
         ]
 
         with patch("builtins.print"):
-            results = advanced_detection_tests.main()
+            results = multi_layer_detection.main()
 
         self.assertEqual(results["benign_total"], 2)
         self.assertEqual(results["malicious_total"], 2)
