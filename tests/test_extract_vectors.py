@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import numpy as np
 import torch
@@ -56,6 +56,67 @@ class ExtractVectorsTests(unittest.TestCase):
         np.testing.assert_allclose(vector, np.array([0.6, 0.8]))
         tokenizer.apply_chat_template.assert_called_once()
         model.assert_called_once_with(input_ids=[[1, 2]])
+
+    @patch(
+        "extract_vectors.Path.resolve",
+        return_value=Path("/virtual/project/extract_vectors.py"),
+    )
+    @patch("extract_vectors.np.savez")
+    @patch("extract_vectors.os.makedirs")
+    @patch("extract_vectors.get_latent_vector_sequential")
+    @patch("extract_vectors.load_prompt_sets")
+    @patch("extract_vectors.load_model_and_tokenizer")
+    @patch("extract_vectors.load_model_config")
+    def test_main_loads_configured_model_and_saves_latent_vectors(
+        self,
+        load_model_config,
+        load_model_and_tokenizer,
+        load_prompt_sets,
+        get_latent_vector_sequential,
+        makedirs,
+        savez,
+        resolve,
+    ):
+        load_model_config.return_value = ("test-org/test-model", 7)
+        tokenizer, model = Mock(), Mock()
+        load_model_and_tokenizer.return_value = (tokenizer, model)
+        load_prompt_sets.return_value = (["benign"], ["harmful"])
+        get_latent_vector_sequential.side_effect = [
+            np.array([0.6, 0.8]),
+            np.array([0.8, 0.6]),
+        ]
+
+        with patch("builtins.print"):
+            result = extract_vectors.main()
+
+        self.assertEqual(result, 0)
+        resolve.assert_called_once()
+        load_model_config.assert_called_once_with(
+            Path("/virtual/project/config/config.yml")
+        )
+        load_prompt_sets.assert_called_once_with(require_benign=True)
+        loaded_model_id, device = load_model_and_tokenizer.call_args.args
+        self.assertEqual(loaded_model_id, "test-org/test-model")
+        self.assertIsInstance(device, torch.device)
+        self.assertEqual(get_latent_vector_sequential.call_count, 2)
+        makedirs.assert_called_once_with("./data/test-org", exist_ok=True)
+        saved_path = savez.call_args.args[0]
+        saved_arrays = savez.call_args.kwargs
+        self.assertEqual(
+            saved_path, f"./data/{loaded_model_id}_latent_vectors.npz"
+        )
+        np.testing.assert_array_equal(
+            saved_arrays["X_benign"], np.array([[0.6, 0.8]])
+        )
+        np.testing.assert_array_equal(
+            saved_arrays["X_malicious"], np.array([[0.8, 0.6]])
+        )
+        np.testing.assert_array_equal(
+            saved_arrays["prompts_benign"], np.array(["benign"])
+        )
+        np.testing.assert_array_equal(
+            saved_arrays["prompts_malicious"], np.array(["harmful"])
+        )
 
 
 if __name__ == "__main__":

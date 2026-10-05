@@ -1,11 +1,25 @@
 from pathlib import Path
 
+import numpy as np
 import torch
 import pandas as pd
 import random
 import yaml
 from datasets import load_from_disk
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+
+def load_latent_vectors(model_id):
+    """Load cached benign and malicious vectors and their prompts."""
+    vector_path = f"./data/{model_id}_latent_vectors.npz"
+    print(f"Loading cached vectors from {vector_path}...")
+    with np.load(vector_path, allow_pickle=True) as data:
+        return (
+            data["X_benign"],
+            data["X_malicious"],
+            data["prompts_benign"],
+            data["prompts_malicious"],
+        )
 
 
 def load_model_config(config_path):

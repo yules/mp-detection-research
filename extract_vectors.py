@@ -63,15 +63,16 @@ def main():
     # 4. Serialize to Disk
     # ---------------------------------------------------------
     print("\nStructuring data for export...")
-    os.makedirs("./data", exist_ok=True)
+    output_path = f"./data/{model_id}_latent_vectors.npz"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     np.savez(
-        "./data/latent_vectors.npz",
+        output_path,
         X_benign=X_benign,
         X_malicious=X_malicious,
         prompts_benign=np.array(benign_prompts),
         prompts_malicious=np.array(malicious_prompts)
     )
-    print("\nSuccessfully saved raw vectors to ./data/latent_vectors.npz")
+    print(f"\nSuccessfully saved raw vectors to {output_path}")
     return 0
 
 

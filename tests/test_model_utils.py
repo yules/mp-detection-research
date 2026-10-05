@@ -9,6 +9,29 @@ import lib.model_utils as model_utils
 
 
 class ModelUtilsTests(unittest.TestCase):
+    @patch("lib.model_utils.np.load")
+    def test_load_latent_vectors_reads_expected_archive(self, load):
+        benign = object()
+        malicious = object()
+        benign_prompts = object()
+        malicious_prompts = object()
+        archive = {
+            "X_benign": benign,
+            "X_malicious": malicious,
+            "prompts_benign": benign_prompts,
+            "prompts_malicious": malicious_prompts,
+        }
+        load.return_value.__enter__.return_value = archive
+
+        vectors = model_utils.load_latent_vectors("test-model")
+
+        self.assertEqual(
+            vectors, (benign, malicious, benign_prompts, malicious_prompts)
+        )
+        load.assert_called_once_with(
+            "./data/test-model_latent_vectors.npz", allow_pickle=True
+        )
+
     def test_load_model_config_returns_selected_model_and_layer(self):
         config = {
             "model": {"name": "test-model"},
