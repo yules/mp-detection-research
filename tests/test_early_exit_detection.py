@@ -5,16 +5,16 @@ from unittest.mock import Mock, patch
 import numpy as np
 import torch
 
-import multi_layer_detection
+import early_exit_detection
 
 
-class MultiLayerDetectionTests(unittest.TestCase):
-    @patch("multi_layer_detection.Path.resolve", return_value=Path("/virtual/project/multi_layer_detection.py"))
-    @patch("multi_layer_detection.AutoModelForCausalLM.from_pretrained")
-    @patch("multi_layer_detection.AutoTokenizer.from_pretrained")
-    @patch("multi_layer_detection.load_from_disk")
-    @patch("multi_layer_detection.np.load")
-    @patch("multi_layer_detection.load_model_config")
+class EarlyExitDetectionTests(unittest.TestCase):
+    @patch("early_exit_detection.Path.resolve", return_value=Path("/virtual/project/early_exit_detection.py"))
+    @patch("early_exit_detection.AutoModelForCausalLM.from_pretrained")
+    @patch("early_exit_detection.AutoTokenizer.from_pretrained")
+    @patch("early_exit_detection.load_from_disk")
+    @patch("early_exit_detection.np.load")
+    @patch("early_exit_detection.load_model_config")
     def test_main_evaluates_all_four_prompt_types(
         self,
         load_model_config,
@@ -69,7 +69,7 @@ class MultiLayerDetectionTests(unittest.TestCase):
         ]
 
         with patch("builtins.print"):
-            results = multi_layer_detection.main()
+            results = early_exit_detection.main()
 
         self.assertEqual(results["benign_total"], 2)
         self.assertEqual(results["malicious_total"], 2)
