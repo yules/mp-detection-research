@@ -5,7 +5,7 @@ from pathlib import Path
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from datasets import load_from_disk
-from lib.model_utils import load_model_config
+from lib.model_utils import load_model_config, tokenize_prompt
 
 def to_dataset(dataset_or_dict):
     """Extract a single Dataset from a DatasetDict or dict wrapper if needed."""
@@ -58,17 +58,7 @@ def main():
     print(f"Sliced model to {num_layers} layers (hidden state {auc_layer}).\n")
 
     def score_prompt_early_exit(prompt):
-        formatted = tokenizer.apply_chat_template(
-            [{"role": "user", "content": prompt}],
-            tokenize=False,
-            add_generation_prompt=True,
-        )
-        inputs = tokenizer(
-            formatted,
-            return_tensors="pt",
-            truncation=True,
-            max_length=1024,
-        ).to(device)
+        inputs = tokenize_prompt(prompt, tokenizer, device)
 
         with torch.no_grad():
             outputs = model(**inputs, output_hidden_states=True)

@@ -123,6 +123,43 @@ class ModelUtilsTests(unittest.TestCase):
         )
         inputs.to.assert_called_once_with(device)
 
+    def test_tokenize_prompt_falls_back_when_no_chat_template(self):
+        tokenizer = Mock()
+        tokenizer.chat_template = None
+        inputs = Mock()
+        tokenizer.return_value = inputs
+        device = torch.device("cpu")
+
+        result = model_utils.tokenize_prompt("hello", tokenizer, device)
+
+        self.assertIs(result, inputs.to.return_value)
+        tokenizer.apply_chat_template.assert_not_called()
+        tokenizer.assert_called_once_with(
+            "hello",
+            return_tensors="pt",
+            truncation=True,
+            max_length=1024,
+        )
+        inputs.to.assert_called_once_with(device)
+
+    def test_tokenize_prompt_falls_back_when_apply_chat_template_raises(self):
+        tokenizer = Mock()
+        tokenizer.apply_chat_template.side_effect = ValueError("No chat template")
+        inputs = Mock()
+        tokenizer.return_value = inputs
+        device = torch.device("cpu")
+
+        result = model_utils.tokenize_prompt("hello", tokenizer, device)
+
+        self.assertIs(result, inputs.to.return_value)
+        tokenizer.assert_called_once_with(
+            "hello",
+            return_tensors="pt",
+            truncation=True,
+            max_length=1024,
+        )
+        inputs.to.assert_called_once_with(device)
+
     @patch("lib.model_utils.pd.read_csv")
     @patch("lib.model_utils.load_from_disk")
     def test_load_prompt_sets_extracts_and_limits_all_sources(

@@ -1,5 +1,5 @@
 model:
-  name: meta-llama/Llama-3.2-3B-Instruct
+  name: google/gemma-2-2b
 
 models:
   meta-llama/Llama-3.2-3B-Instruct:
@@ -8,3 +8,6 @@ models:
   Qwen/Qwen2.5-3B-Instruct:
     layer_idx: 18
     auc_layer: 21
+  google/gemma-2-2b:
+    layer_idx: 14
+    auc_layer: 20

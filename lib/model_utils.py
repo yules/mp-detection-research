@@ -59,11 +59,17 @@ def load_model_and_tokenizer(model_id, device):
 
 
 def tokenize_prompt(prompt, tokenizer, device, max_length=1024):
-    formatted_prompt = tokenizer.apply_chat_template(
-        [{"role": "user", "content": prompt}],
-        tokenize=False,
-        add_generation_prompt=True,
-    )
+    formatted_prompt = prompt
+    if getattr(tokenizer, "chat_template", None):
+        try:
+            formatted_prompt = tokenizer.apply_chat_template(
+                [{"role": "user", "content": prompt}],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+        except Exception:
+            formatted_prompt = prompt
+
     return tokenizer(
         formatted_prompt,
         return_tensors="pt",

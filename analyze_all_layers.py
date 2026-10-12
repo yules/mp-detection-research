@@ -6,7 +6,7 @@ from sklearn.metrics import roc_auc_score
 
 from lib.model_utils import load_model_config
 
-NUM_LAYERS = 29
+NUM_LAYERS = 27
 
 # 1. Load Data
 print("Loading cached layer vectors...")
