@@ -10,6 +10,7 @@ import early_exit_detection
 
 class EarlyExitDetectionTests(unittest.TestCase):
     @patch("early_exit_detection.Path.resolve", return_value=Path("/virtual/project/early_exit_detection.py"))
+    @patch("early_exit_detection.pd.DataFrame.to_csv", autospec=True)
     @patch("early_exit_detection.AutoModelForCausalLM.from_pretrained")
     @patch("early_exit_detection.AutoTokenizer.from_pretrained")
     @patch("early_exit_detection.load_from_disk")
@@ -22,6 +23,7 @@ class EarlyExitDetectionTests(unittest.TestCase):
         load_from_disk,
         load_tokenizer,
         load_model,
+        to_csv,
         resolve,
     ):
         load_model_config.return_value = ("test-model", 14, 2)
@@ -82,6 +84,13 @@ class EarlyExitDetectionTests(unittest.TestCase):
             Path("/virtual/project/config/config.yml")
         )
         np_load.assert_called_once_with("./data/test-model_all_layers.npz")
+        to_csv.assert_called_once()
+        df_exported = to_csv.call_args.args[0]
+        self.assertTrue(
+            df_exported["Result_Status"]
+            .isin(["False Alarm (False Positive)", "Missed Attack (False Negative)"])
+            .all()
+        )
 
 
 if __name__ == "__main__":

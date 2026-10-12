@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 from sklearn.metrics import roc_auc_score
 
-from lib.model_utils import load_model_config
+from lib.common import load_model_config
 
 NUM_LAYERS = 27
 

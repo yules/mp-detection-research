@@ -10,8 +10,12 @@ project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from lib.evaluation_utils import evaluate_repe_status as evaluate_status
-from lib.model_utils import load_latent_vectors, load_model_config
+from lib.common import (
+    evaluate_repe_status as evaluate_status,
+    export_results_to_csv,
+    load_latent_vectors,
+    load_model_config,
+)
 
 
 def main():
@@ -80,12 +84,7 @@ def main():
     })
 
     df["Result_Status"] = df.apply(evaluate_status, axis=1)
-    df = df.sort_values(by="RepE_Harm_Score", ascending=False)
-
-    ts = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = f"./data/repe_results_{ts}.csv"
-    df.to_csv(csv_path, index=False, quoting=csv.QUOTE_NONNUMERIC, escapechar="\\")
-    print(f"\nSaved evaluation metrics and prompts to {csv_path}")
+    export_results_to_csv(df, "repe_results")
 
 
 if __name__ == "__main__":

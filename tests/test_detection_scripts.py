@@ -33,8 +33,32 @@ class DetectionScriptsTests(unittest.TestCase):
             with self.subTest(row=row):
                 self.assertEqual(repe_detect.evaluate_status(row), expected)
 
+    def test_detect_anomalies_status_labels_cover_prediction_outcomes(self):
+        cases = [
+            (
+                {"Numeric_Label": -1, "Mahalanobis_Prediction": -1},
+                "True Anomaly",
+            ),
+            (
+                {"Numeric_Label": -1, "Mahalanobis_Prediction": 1},
+                "Missed Attack (False Negative)",
+            ),
+            (
+                {"Numeric_Label": 1, "Mahalanobis_Prediction": -1},
+                "False Alarm (False Positive)",
+            ),
+            (
+                {"Numeric_Label": 1, "Mahalanobis_Prediction": 1},
+                "Benign (Normal)",
+            ),
+        ]
+
+        for row, expected in cases:
+            with self.subTest(row=row):
+                self.assertEqual(detect_anomalies.evaluate_status(row), expected)
+
     @patch("multi_vector_repe.Path.resolve", return_value=Path("/virtual/project/multi_vector_repe.py"))
-    @patch("multi_vector_repe.pd.DataFrame.to_csv")
+    @patch("multi_vector_repe.pd.DataFrame.to_csv", autospec=True)
     @patch("multi_vector_repe.get_latent_vector_sequential")
     @patch("multi_vector_repe.load_model_and_tokenizer")
     @patch("multi_vector_repe.load_stress_test_prompts")
@@ -72,8 +96,14 @@ class DetectionScriptsTests(unittest.TestCase):
         )
         load_latent_vectors.assert_called_once_with("test-model-repe")
         to_csv.assert_called_once()
+        df_exported = to_csv.call_args.args[0]
+        self.assertTrue(
+            df_exported["Result_Status"]
+            .isin(["False Alarm (False Positive)", "Missed Attack (False Negative)"])
+            .all()
+        )
 
-    @patch("prev_detection_scripts.repe_detect.pd.DataFrame.to_csv")
+    @patch("prev_detection_scripts.repe_detect.pd.DataFrame.to_csv", autospec=True)
     @patch("prev_detection_scripts.repe_detect.load_latent_vectors")
     @patch("prev_detection_scripts.repe_detect.load_model_config")
     def test_repe_detect_reads_configured_model_vectors(
@@ -98,8 +128,14 @@ class DetectionScriptsTests(unittest.TestCase):
 
         load_latent_vectors.assert_called_once_with("test-model-single")
         to_csv.assert_called_once()
+        df_exported = to_csv.call_args.args[0]
+        self.assertTrue(
+            df_exported["Result_Status"]
+            .isin(["False Alarm (False Positive)", "Missed Attack (False Negative)"])
+            .all()
+        )
 
-    @patch("prev_detection_scripts.detect_anomalies.pd.DataFrame.to_csv")
+    @patch("prev_detection_scripts.detect_anomalies.pd.DataFrame.to_csv", autospec=True)
     @patch("prev_detection_scripts.detect_anomalies.load_latent_vectors")
     @patch("prev_detection_scripts.detect_anomalies.load_model_config")
     def test_detect_anomalies_reads_configured_model_vectors(
@@ -124,6 +160,12 @@ class DetectionScriptsTests(unittest.TestCase):
 
         load_latent_vectors.assert_called_once_with("test-model-mahalanobis")
         to_csv.assert_called_once()
+        df_exported = to_csv.call_args.args[0]
+        self.assertTrue(
+            df_exported["Result_Status"]
+            .isin(["False Alarm (False Positive)", "Missed Attack (False Negative)"])
+            .all()
+        )
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import pandas as pd
 import torch
 import numpy as np
 import random
@@ -5,19 +6,14 @@ from pathlib import Path
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from datasets import load_from_disk
-from lib.model_utils import load_model_config, tokenize_prompt
-
-def to_dataset(dataset_or_dict):
-    """Extract a single Dataset from a DatasetDict or dict wrapper if needed."""
-    if hasattr(dataset_or_dict, "column_names") and isinstance(dataset_or_dict.column_names, dict):
-        if "train" in dataset_or_dict:
-            return dataset_or_dict["train"]
-        return dataset_or_dict[list(dataset_or_dict.keys())[0]]
-    if hasattr(dataset_or_dict, "keys") and not hasattr(dataset_or_dict, "column_names"):
-        if "train" in dataset_or_dict:
-            return dataset_or_dict["train"]
-        return dataset_or_dict[list(dataset_or_dict.keys())[0]]
-    return dataset_or_dict
+from lib.common import (
+    evaluate_repe_status as evaluate_status,
+    export_results_to_csv,
+    get_device,
+    load_model_config,
+    to_dataset,
+    tokenize_prompt,
+)
 
 
 def main():
@@ -46,7 +42,7 @@ def main():
     # ---------------------------------------------------------
     # 2. Early-Exit Model Optimization
     # ---------------------------------------------------------
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = get_device()
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
     print(f"Loading {model_id} and retaining {num_layers} layers for early-exit...")
@@ -120,37 +116,55 @@ def main():
     # 4. Evaluate Stress Tests
     # ---------------------------------------------------------
     print("\nTesting Benign Prompts...")
-    benign_passed = sum(
-        score_prompt_early_exit(prompt) <= threshold
-        for prompt in tqdm(benign_prompts)
-    )
+    benign_scores = [score_prompt_early_exit(prompt) for prompt in tqdm(benign_prompts)]
+    benign_passed = sum(s <= threshold for s in benign_scores)
 
     print("\nTesting Malicious Base Attacks...")
-    malicious_caught = sum(
-        score_prompt_early_exit(prompt) > threshold
-        for prompt in tqdm(malicious_prompts)
-    )
+    malicious_scores = [score_prompt_early_exit(prompt) for prompt in tqdm(malicious_prompts)]
+    malicious_caught = sum(s > threshold for s in malicious_scores)
 
     print("\nTesting GCG Suffix Attacks...")
-    gcg_caught = sum(
-        score_prompt_early_exit(prompt) > threshold
-        for prompt in tqdm(gcg_prompts)
-    )
+    gcg_scores = [score_prompt_early_exit(prompt) for prompt in tqdm(gcg_prompts)]
+    gcg_caught = sum(s > threshold for s in gcg_scores)
 
     print("\nTesting Roleplay/DAN Attacks...")
-    roleplay_caught = sum(
-        score_prompt_early_exit(prompt) > threshold
-        for prompt in tqdm(roleplay_prompts)
-    )
+    roleplay_scores = [score_prompt_early_exit(prompt) for prompt in tqdm(roleplay_prompts)]
+    roleplay_caught = sum(s > threshold for s in roleplay_scores)
 
     print("\n" + "=" * 40)
-    print(f"STRESS TEST RESULTS (LAYER {auc_layer} EARLY-EXIT)")
+    print(f"TEST RESULTS (LAYER {auc_layer} EARLY-EXIT)")
     print("=" * 40)
     print(f"Benign Prompts Passed:            {benign_passed} / {len(benign_prompts)}")
     print(f"Base Attacks Blocked:             {malicious_caught} / {len(malicious_prompts)}")
     print(f"GCG Suffixes Blocked:             {gcg_caught} / {len(gcg_prompts)}")
     print(f"Roleplay Wrappers Blocked:        {roleplay_caught} / {len(roleplay_prompts)}")
     print("=" * 40)
+
+    # 5. Export False Positives and Undetected Malicious Prompts to CSV
+    prompts_test = list(benign_prompts) + list(malicious_prompts) + list(gcg_prompts) + list(roleplay_prompts)
+    ground_truth_test = (
+        ["Benign"] * len(benign_prompts)
+        + ["Malicious"] * (len(malicious_prompts) + len(gcg_prompts) + len(roleplay_prompts))
+    )
+    test_set = (
+        ["Benign"] * len(benign_prompts)
+        + ["Malicious"] * len(malicious_prompts)
+        + ["GCG"] * len(gcg_prompts)
+        + ["Roleplay"] * len(roleplay_prompts)
+    )
+    all_scores = benign_scores + malicious_scores + gcg_scores + roleplay_scores
+    predictions = ["Malicious" if s > threshold else "Benign" for s in all_scores]
+
+    df = pd.DataFrame({
+        "Ground_Truth": ground_truth_test,
+        "Test_Set": test_set,
+        "RepE_Harm_Score": all_scores,
+        "Prediction": predictions,
+        "Prompt_Text": prompts_test,
+    })
+
+    df["Result_Status"] = df.apply(evaluate_status, axis=1)
+    export_results_to_csv(df, "early_exit_detection_results")
 
     return {
         "benign_passed": benign_passed,

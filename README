@@ -42,7 +42,10 @@ This makes the method a latent-space anomaly detector based on internal model re
 - `early_exit_detection.py` — calibrates a harmful-direction threshold using a chosen layer, then evaluates benign prompts, base malicious attacks, GCG suffixes, and roleplay wrappers against that threshold.
 - `multi_vector_repe.py` — runs the multi-vector RepE detector and reports evaluation metrics.
 - `prev_detection_scripts/` — earlier baseline implementations, including a single-vector RepE detector and a Mahalanobis-based anomaly detector.
-- `data/` — cached datasets and generated latent vectors.
+- `lib/common.py` — shared utility functions for model loading, hardware device detection, tokenization, dataset normalization, and error CSV export.
+- `lib/evaluation_utils.py` — evaluation status classification utilities.
+- `config/config.yml` — configuration specifying the active model and layer indices.
+- `data/` — cached datasets, generated latent vectors, and exported CSV results.
 - `requirements.txt` — Python dependencies for the pipeline.
 
 ## Datasets
@@ -114,19 +117,28 @@ This script:
 - clusters malicious calibration samples into K malicious sub-manifolds
 - evaluates the detector on held-out prompts
 - prints ROC-AUC and attack detection statistics
+- exports misclassified prompts (false alarms and missed attacks) to a timestamped CSV in `data/multi_vector_repe_results_<timestamp>.csv` for error analysis
 
 ## Expected outputs
 
-The detector reports metrics such as:
+The detector reports summary metrics to the console:
 
 - ROC-AUC score
-- decision threshold based on the benign distribution
+- decision threshold based on the benign distribution (e.g., 99th percentile)
 - benign pass rate
-- false alarms
-- attacks detected
-- attacks missed
+- false alarms (`False Positive`)
+- attacks detected (`True Positive`)
+- attacks missed (`False Negative`)
 
 The current implementation uses a calibration set of 100 benign and 100 malicious samples, with the remainder reserved for evaluation.
+
+### Error analysis CSV export
+
+At the end of evaluation, `multi_vector_repe.py`, `early_exit_detection.py`, and baseline detectors automatically filter and export misclassified prompts to a CSV file in `data/`:
+
+- **Only misclassifications are saved**: filters specifically for `False Alarm (False Positive)` (benign prompts incorrectly flagged as malicious) and `Missed Attack (False Negative)` (malicious prompts that evaded detection). Correctly classified prompts are omitted to keep error triage focused.
+- **Sorted by score**: rows are sorted descending by detector score (`RepE_Harm_Score` or anomaly score) so the highest-confidence misclassifications appear first.
+- **Columns included**: `Ground_Truth`, `Test_Set`, `RepE_Harm_Score`, `Prediction`, `Prompt_Text`, and `Result_Status`.
 
 ### 4) Optional: extract all-layer latent states
 
@@ -153,6 +165,8 @@ python early_exit_detection.py
 ```
 
 This script calibrates a harmful-direction threshold from the selected layer, then evaluates the early-exit detector across benign prompts (UltraChat), base malicious attacks (HarmBench), and adversarial prompt variants such as GCG-style suffix attacks and roleplay/developer-mode jailbreak wrappers. It is useful for checking whether a discovered layer remains robust under stronger attack patterns beyond the normal evaluation split.
+
+Like the main detector, it automatically exports misclassified prompts (false alarms and missed attacks across base attacks, GCG suffixes, and roleplay wrappers) to `data/early_exit_detection_results_<timestamp>.csv`.
 
 
 ## Model configuration

@@ -7,8 +7,10 @@ from sklearn.metrics import roc_auc_score
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 from extract_vectors import get_latent_vector_sequential
-from lib.evaluation_utils import evaluate_repe_status as evaluate_status
-from lib.model_utils import (
+from lib.common import (
+    evaluate_repe_status as evaluate_status,
+    export_results_to_csv,
+    get_device,
     load_latent_vectors,
     load_model_and_tokenizer,
     load_model_config,
@@ -61,7 +63,7 @@ def main():
 
     # Stress prompts are evaluation-only; calibration and clustering remain unchanged.
     gcg_prompts, roleplay_prompts = load_stress_test_prompts()
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = get_device()
     tokenizer, model = load_model_and_tokenizer(model_id, device)
 
     def extract_prompt_vectors(prompts):
@@ -119,12 +121,7 @@ def main():
     })
 
     df["Result_Status"] = df.apply(evaluate_status, axis=1)
-    df = df.sort_values(by="RepE_Harm_Score", ascending=False)
-
-    ts = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = f"./data/multi_vector_repe_results_{ts}.csv"
-    df.to_csv(csv_path, index=False, quoting=csv.QUOTE_NONNUMERIC, escapechar="\\")
-    print(f"\nSaved evaluation metrics and prompts to {csv_path}")
+    export_results_to_csv(df, "multi_vector_repe_results")
 
 
 if __name__ == "__main__":

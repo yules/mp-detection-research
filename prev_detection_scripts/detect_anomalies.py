@@ -10,16 +10,16 @@ project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from lib.model_utils import load_latent_vectors, load_model_config
+from lib.common import export_results_to_csv, load_latent_vectors, load_model_config
 
 
 def evaluate_status(row):
     if row["Numeric_Label"] == -1 and row["Mahalanobis_Prediction"] == -1:
         return "True Anomaly"
     elif row["Numeric_Label"] == -1 and row["Mahalanobis_Prediction"] == 1:
-        return "Missed Attack"
+        return "Missed Attack (False Negative)"
     elif row["Numeric_Label"] == 1 and row["Mahalanobis_Prediction"] == -1:
-        return "False Alarm"
+        return "False Alarm (False Positive)"
     else:
         return "Benign (Normal)"
 
@@ -86,12 +86,7 @@ def main():
     })
 
     df["Result_Status"] = df.apply(evaluate_status, axis=1)
-    df = df.sort_values(by="Distance_Score", ascending=False) # Highest distance at top
-
-    ts = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = f"./data/mahalanobis_results_{ts}.csv"
-    df.to_csv(csv_path, index=False, quoting=csv.QUOTE_NONNUMERIC, escapechar='\\')
-    print(f"\n✅ Exported detailed results to {csv_path}")
+    export_results_to_csv(df, "mahalanobis_results", score_col="Distance_Score")
 
 
 if __name__ == "__main__":
