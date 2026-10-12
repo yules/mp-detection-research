@@ -311,6 +311,27 @@ class CommonTests(unittest.TestCase):
         )
         self.assertEqual(exported_df["RepE_Harm_Score"].tolist(), [0.9, 0.4])
 
+    @patch("lib.common.Path.mkdir")
+    @patch("lib.common.pd.DataFrame.to_csv", autospec=True)
+    def test_export_results_to_csv_with_model_id_prefix(self, mock_to_csv, mock_mkdir):
+        df = pd.DataFrame({
+            "Result_Status": ["False Alarm (False Positive)"],
+            "RepE_Harm_Score": [0.9],
+            "Prompt_Text": ["p1"],
+        })
+
+        with patch("builtins.print"):
+            csv_path = common.export_results_to_csv(
+                df, "test_results", model_id="google/gemma-2-2b"
+            )
+
+        self.assertTrue(
+            csv_path.startswith("./data/google/gemma-2-2b_test_results_")
+        )
+        self.assertTrue(csv_path.endswith(".csv"))
+        mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        mock_to_csv.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

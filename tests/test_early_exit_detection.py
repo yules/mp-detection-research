@@ -86,6 +86,10 @@ class EarlyExitDetectionTests(unittest.TestCase):
         np_load.assert_called_once_with("./data/test-model_all_layers.npz")
         to_csv.assert_called_once()
         df_exported = to_csv.call_args.args[0]
+        csv_path_exported = to_csv.call_args.args[1]
+        self.assertTrue(
+            csv_path_exported.startswith("./data/test-model_early_exit_detection_results_")
+        )
         self.assertTrue(
             df_exported["Result_Status"]
             .isin(["False Alarm (False Positive)", "Missed Attack (False Negative)"])

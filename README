@@ -117,7 +117,7 @@ This script:
 - clusters malicious calibration samples into K malicious sub-manifolds
 - evaluates the detector on held-out prompts
 - prints ROC-AUC and attack detection statistics
-- exports misclassified prompts (false alarms and missed attacks) to a timestamped CSV in `data/multi_vector_repe_results_<timestamp>.csv` for error analysis
+- exports misclassified prompts (false alarms and missed attacks) to a timestamped CSV in `data/<model_id>_multi_vector_repe_results_<timestamp>.csv` for error analysis
 
 ## Expected outputs
 
@@ -134,7 +134,7 @@ The current implementation uses a calibration set of 100 benign and 100 maliciou
 
 ### Error analysis CSV export
 
-At the end of evaluation, `multi_vector_repe.py`, `early_exit_detection.py`, and baseline detectors automatically filter and export misclassified prompts to a CSV file in `data/`:
+At the end of evaluation, `multi_vector_repe.py`, `early_exit_detection.py`, and baseline detectors automatically filter and export misclassified prompts to a CSV file in `data/`, prefixed by the active model ID (e.g. `data/<model_id>_<script_results>_<timestamp>.csv`):
 
 - **Only misclassifications are saved**: filters specifically for `False Alarm (False Positive)` (benign prompts incorrectly flagged as malicious) and `Missed Attack (False Negative)` (malicious prompts that evaded detection). Correctly classified prompts are omitted to keep error triage focused.
 - **Sorted by score**: rows are sorted descending by detector score (`RepE_Harm_Score` or anomaly score) so the highest-confidence misclassifications appear first.
@@ -166,7 +166,7 @@ python early_exit_detection.py
 
 This script calibrates a harmful-direction threshold from the selected layer, then evaluates the early-exit detector across benign prompts (UltraChat), base malicious attacks (HarmBench), and adversarial prompt variants such as GCG-style suffix attacks and roleplay/developer-mode jailbreak wrappers. It is useful for checking whether a discovered layer remains robust under stronger attack patterns beyond the normal evaluation split.
 
-Like the main detector, it automatically exports misclassified prompts (false alarms and missed attacks across base attacks, GCG suffixes, and roleplay wrappers) to `data/early_exit_detection_results_<timestamp>.csv`.
+Like the main detector, it automatically exports misclassified prompts (false alarms and missed attacks across base attacks, GCG suffixes, and roleplay wrappers) to `data/<model_id>_early_exit_detection_results_<timestamp>.csv`.
 
 
 ## Model configuration

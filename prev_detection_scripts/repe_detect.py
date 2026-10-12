@@ -84,7 +84,7 @@ def main():
     })
 
     df["Result_Status"] = df.apply(evaluate_status, axis=1)
-    export_results_to_csv(df, "repe_results")
+    export_results_to_csv(df, "repe_results", model_id=model_id)
 
 
 if __name__ == "__main__":

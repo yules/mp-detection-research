@@ -97,6 +97,10 @@ class DetectionScriptsTests(unittest.TestCase):
         load_latent_vectors.assert_called_once_with("test-model-repe")
         to_csv.assert_called_once()
         df_exported = to_csv.call_args.args[0]
+        csv_path_exported = to_csv.call_args.args[1]
+        self.assertTrue(
+            csv_path_exported.startswith("./data/test-model-repe_multi_vector_repe_results_")
+        )
         self.assertTrue(
             df_exported["Result_Status"]
             .isin(["False Alarm (False Positive)", "Missed Attack (False Negative)"])
@@ -129,6 +133,10 @@ class DetectionScriptsTests(unittest.TestCase):
         load_latent_vectors.assert_called_once_with("test-model-single")
         to_csv.assert_called_once()
         df_exported = to_csv.call_args.args[0]
+        csv_path_exported = to_csv.call_args.args[1]
+        self.assertTrue(
+            csv_path_exported.startswith("./data/test-model-single_repe_results_")
+        )
         self.assertTrue(
             df_exported["Result_Status"]
             .isin(["False Alarm (False Positive)", "Missed Attack (False Negative)"])
@@ -161,6 +169,10 @@ class DetectionScriptsTests(unittest.TestCase):
         load_latent_vectors.assert_called_once_with("test-model-mahalanobis")
         to_csv.assert_called_once()
         df_exported = to_csv.call_args.args[0]
+        csv_path_exported = to_csv.call_args.args[1]
+        self.assertTrue(
+            csv_path_exported.startswith("./data/test-model-mahalanobis_mahalanobis_results_")
+        )
         self.assertTrue(
             df_exported["Result_Status"]
             .isin(["False Alarm (False Positive)", "Missed Attack (False Negative)"])

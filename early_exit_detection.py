@@ -164,7 +164,7 @@ def main():
     })
 
     df["Result_Status"] = df.apply(evaluate_status, axis=1)
-    export_results_to_csv(df, "early_exit_detection_results")
+    export_results_to_csv(df, "early_exit_detection_results", model_id=model_id)
 
     return {
         "benign_passed": benign_passed,

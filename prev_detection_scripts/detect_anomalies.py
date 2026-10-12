@@ -86,7 +86,9 @@ def main():
     })
 
     df["Result_Status"] = df.apply(evaluate_status, axis=1)
-    export_results_to_csv(df, "mahalanobis_results", score_col="Distance_Score")
+    export_results_to_csv(
+        df, "mahalanobis_results", model_id=model_id, score_col="Distance_Score"
+    )
 
 
 if __name__ == "__main__":

@@ -196,6 +196,7 @@ def evaluate_repe_status(row):
 def export_results_to_csv(
     df,
     filename_prefix,
+    model_id=None,
     score_col="RepE_Harm_Score",
     output_dir="./data",
 ):
@@ -209,7 +210,9 @@ def export_results_to_csv(
         filtered_df = filtered_df.sort_values(by=score_col, ascending=False)
 
     ts = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = f"{output_dir}/{filename_prefix}_{ts}.csv"
+    prefix = f"{model_id}_{filename_prefix}" if model_id else filename_prefix
+    csv_path = f"{output_dir}/{prefix}_{ts}.csv"
+    Path(csv_path).parent.mkdir(parents=True, exist_ok=True)
     filtered_df.to_csv(
         csv_path,
         index=False,
