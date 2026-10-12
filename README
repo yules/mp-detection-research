@@ -23,7 +23,7 @@ The detector follows this flow:
 1. Load a benign dataset and a malicious dataset.
 2. Pass prompt texts through a pretrained causal LM.
 3. Extract a normalized hidden-state vector from a chosen intermediate layer.
-4. Save the resulting latent vectors in `data/latent_vectors.npz`.
+4. Save the resulting latent vectors in `data/<model_id>_latent_vectors.npz`.
 5. Use a calibration subset to estimate:
    - a benign center
    - multiple malicious centroids via K-means clustering
@@ -55,7 +55,7 @@ The project uses a mixture of benign and malicious sources:
 
 The processed representation cache is saved to:
 
-- `data/latent_vectors.npz`
+- `data/<model_id>_latent_vectors.npz`
 
 ## Attribution and licenses
 
@@ -66,6 +66,7 @@ their original terms before downloading, using, or redistributing them.
 
 - [Meta Llama 3.2 3B Instruct](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct), developed by Meta. It is distributed under the [Llama 3.2 Community License](https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/LICENSE) and is subject to Meta's [Acceptable Use Policy](https://www.llama.com/llama3_2/use-policy/).
 - [Qwen2.5 3B Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct), developed by the Qwen Team. The model card lists the `qwen-research` license and provides the [Qwen2.5 citation](https://qwenlm.github.io/blog/qwen2.5/).
+- [Google Gemma 2 2B](https://huggingface.co/google/gemma-2-2b), developed by Google. It is distributed under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms).
 
 ### Datasets
 
@@ -156,21 +157,19 @@ This script calibrates a harmful-direction threshold from the selected layer, th
 
 ## Model configuration
 
-The default model used in the latent extraction stage is:
+Models and their designated evaluation layers (`layer_idx` and `auc_layer`) are managed via `config/config.yml`. Preconfigured models include:
 
-- `meta-llama/Llama-3.2-3B-Instruct`
+- `google/gemma-2-2b` (`layer_idx: 14`, `auc_layer: 20`)
+- `meta-llama/Llama-3.2-3B-Instruct` (`layer_idx: 14`, `auc_layer: 12`)
+- `Qwen/Qwen2.5-3B-Instruct` (`layer_idx: 18`, `auc_layer: 21`)
 
-A commented alternate is also included for:
-
-- `Qwen/Qwen2.5-3B-Instruct`
-
-The script can be adjusted to use a different model or hidden layer depending on your experiments.
+To switch the active model, set `model.name` under `model:` in `config/config.yml`.
 
 ## Notes
 
 - This is a research-focused pipeline for model safety and anomaly detection.
 - Inference can be computationally expensive, so a GPU is recommended.
-- The layer index used for vector extraction is configurable in `extract_vectors.py`.
+- The layer index used for vector extraction is configurable in `config/config.yml`.
 - The project is intended for experimentation and analysis of malicious latent structure rather than deployment in production systems.
 
 ## Related ideas
